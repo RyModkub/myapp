@@ -18,13 +18,15 @@ const ContactOptionsManagement = () => {
 
     const fetchDepartments = async() => {
         try {
-            const response = await axios.get(`${API_URL}/contactOptions/departments`);
-            // แปลงข้อมูลที่ได้จาก Firebase เป็น array
-            const departmentsArray = Object.keys(response.data).map(department => ({
+            const response = await axios.get(`${API_URL}/departments`);
+            const data = response.data;
+
+            // Check if the data is an object and transform it into an array
+            const departmentsArray = Object.keys(data).map(department => ({
                 name: department,
-                contacts: Object.keys(response.data[department].contacts || {}).map(contactId => ({
+                contacts: Object.keys(data[department].contacts || {}).map(contactId => ({
                     id: contactId,
-                    name: response.data[department].contacts[contactId].name
+                    name: data[department].contacts[contactId].name
                 }))
             }));
             setDepartments(departmentsArray);
@@ -33,10 +35,16 @@ const ContactOptionsManagement = () => {
         }
     };
 
+    // Fetch Reasons
     const fetchReasons = async() => {
         try {
-            const response = await axios.get(`${API_URL}/contactOptions/reasons`);
-            setReasons(response.data);
+            const response = await axios.get(`${API_URL}/reasons`);
+            const data = response.data;
+
+            // Convert object to array if necessary (if reasons are stored as key-value pairs)
+            const reasonsArray = Array.isArray(data) ? data : Object.keys(data).map(key => data[key]);
+
+            setReasons(reasonsArray);
         } catch (error) {
             console.error('Error fetching reasons:', error);
         }
@@ -135,9 +143,8 @@ const ContactOptionsManagement = () => {
         onChange = {
             (e) => setNewDepartment(e.target.value) }
         /> <
-        button onClick = { addDepartment } > Add Department < /button>
-
-        {
+        button onClick = { addDepartment } > Add Department < /button> <
+        h2 > Contact List < /h2> {
             departments.map((dept) => ( <
                 div key = { dept.name } >
                 <
@@ -204,6 +211,7 @@ const ContactOptionsManagement = () => {
             (e) => setNewReason(e.target.value) }
         /> <
         button onClick = { addReason } > Add Reason < /button> <
+        h2 > Reasons List < /h2> <
         ul > {
             reasons.map((reason, idx) => ( <
                 li key = { idx } > { reason.reason } <

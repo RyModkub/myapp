@@ -53,20 +53,6 @@ app.post('/login', async(req, res) => {
     }
 });
 
-app.get('/users', async(req, res) => {
-    try {
-        const usersRef = db.ref('users');
-        const snapshot = await usersRef.once('value');
-        if (snapshot.exists()) {
-            res.status(200).send(snapshot.val());
-        } else {
-            res.status(404).send({ error: 'No users found' });
-        }
-    } catch (error) {
-        res.status(500).send({ error: error.message });
-    }
-});
-
 // เส้นทางสำหรับลงทะเบียนผู้ใช้
 app.post('/register', async(req, res) => {
     const { email, password, role } = req.body;
@@ -120,23 +106,36 @@ app.get('/users', async(req, res) => {
     }
 });
 // Fetch Departments Route
-app.get('/contactOptions/departments', async(req, res) => {
+app.get('/departments', async(req, res) => {
     try {
-        // ดึงข้อมูลจาก path /contactOptions/departments บน Firebase
-        const snapshot = await get(db.ref('/contactOptions/departments'));
-        const data = snapshot.val();
-
-        if (data) {
-            res.status(200).json(data); // ส่งข้อมูลกลับไปยัง client
+        const departmentsRef = db.ref('contactOptions/departments');
+        const snapshot = await departmentsRef.once('value');
+        if (snapshot.exists()) {
+            res.status(200).send(snapshot.val());
         } else {
-            res.status(404).json({ message: 'No departments found' });
+            res.status(404).send({ error: 'No departments found' });
         }
     } catch (error) {
         console.error('Error fetching departments:', error);
-        res.status(500).json({ error: 'Failed to fetch departments' });
+        res.status(500).send({ error: 'Failed to fetch departments' });
     }
 });
 
+// Fetch Reasons Route
+app.get('/reasons', async(req, res) => {
+    try {
+        const reasonsRef = db.ref('contactOptions/reasons');
+        const snapshot = await reasonsRef.once('value');
+        if (snapshot.exists()) {
+            res.status(200).send(snapshot.val());
+        } else {
+            res.status(404).send({ error: 'No reasons found' });
+        }
+    } catch (error) {
+        console.error('Error fetching reasons:', error);
+        res.status(500).send({ error: 'Failed to fetch reasons' });
+    }
+});
 
 // Add Department Route
 app.post('/contactOptions/departments', async(req, res) => {
@@ -172,16 +171,7 @@ app.post('/contactOptions/departments/:department/contacts', async(req, res) => 
 });
 
 // Fetch Reasons Route
-app.get('/reasons', async(req, res) => {
-    try {
-        const snapshot = await get(db.ref('contactOptions/reasons'));
-        const data = snapshot.val();
-        res.json({ success: true, data: data ? Object.values(data) : [] });
-    } catch (error) {
-        console.error('Error fetching reasons:', error);
-        res.status(500).json({ success: false, error: 'Failed to fetch reasons' });
-    }
-});
+
 
 app.put('/contactOptions/departments/:oldName', async(req, res) => {
     const { oldName } = req.params;
