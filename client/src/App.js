@@ -3,8 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Login from './login'; // Import หน้า Login
 import Dashboard from './Dashboard'; // Import หน้า Dashboard หรือหน้าอื่นๆ
 import UserManagement from './UserManagement';
-import ContactOptionsManagement from './ContactOptionsManagement';
-import UserRegistrationComponent from './UserRegistrationComponent';
+import ContactOptionsManagement from './ContactOptionsManagement'
+import VisitorRegister from './VisitorRegister';
 
 function App() {
     return ( <
@@ -26,8 +26,8 @@ function App() {
         Route path = "/contactoptionsmanagement"
         element = { < ContactOptionsManagement / > }
         /> <
-        Route path = "/UserRegistrationComponent"
-        element = { < UserRegistrationComponent / > }
+        Route path = "/VisitorRegister"
+        element = { < VisitorRegister / > }
         /> <
         /Routes> <
         /Router>

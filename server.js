@@ -3,7 +3,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const admin = require('firebase-admin');
 const { getAuth } = require('firebase-admin/auth');
-const { getDatabase, set, push, get, update, remove } = require('firebase-admin/database');
+const { getDatabase, ref, set, push, get, update, remove } = require('firebase-admin/database');
 
 // Setup Firebase Admin SDK
 const serviceAccount = require('./firebaseServiceAccountKey.json');
@@ -105,172 +105,258 @@ app.get('/users', async(req, res) => {
         res.status(500).send({ error: error.message });
     }
 });
-// Fetch Departments Route
-app.get('/departments', async(req, res) => {
+
+// API: ดึง Floors
+app.get('/floors', async(req, res) => {
     try {
-        const departmentsRef = db.ref('contactOptions/departments');
-        const snapshot = await departmentsRef.once('value');
-        if (snapshot.exists()) {
-            res.status(200).send(snapshot.val());
-        } else {
-            res.status(404).send({ error: 'No departments found' });
-        }
+        const floorsRef = db.ref('contactOptions/floors');
+        const snapshot = await floorsRef.once('value');
+        const floors = snapshot.val();
+        res.json(floors || {});
     } catch (error) {
-        console.error('Error fetching departments:', error);
-        res.status(500).send({ error: 'Failed to fetch departments' });
+        res.status(500).send('Error fetching floors');
     }
 });
 
-// Fetch Reasons Route
+// API: ดึง Companies ตาม Floor
+app.get('/floors/:floor/companies', async(req, res) => {
+    const { floor } = req.params;
+    try {
+        const companiesRef = db.ref(`contactOptions/floors/${floor}/companies`);
+        const snapshot = await companiesRef.once('value');
+        const companies = snapshot.val();
+        res.json(companies || {});
+    } catch (error) {
+        res.status(500).send('Error fetching companies');
+    }
+});
+
+// API: ดึง Departments ตาม Company
+app.get('/companies/:company/departments', async(req, res) => {
+    const { company } = req.params;
+    try {
+        const departmentsRef = db.ref(`contactOptions/companies/${company}/departments`);
+        const snapshot = await departmentsRef.once('value');
+        const departments = snapshot.val();
+        res.json(departments || {});
+    } catch (error) {
+        res.status(500).send('Error fetching departments');
+    }
+});
+
+// API: ดึง Contacts ตาม Department
+app.get('/departments/:department/contacts', async(req, res) => {
+    const { department } = req.params;
+    try {
+        const contactsRef = db.ref(`contactOptions/departments/${department}/contacts`);
+        const snapshot = await contactsRef.once('value');
+        const contacts = snapshot.val();
+        res.json(contacts || {});
+    } catch (error) {
+        res.status(500).send('Error fetching contacts');
+    }
+});
+
+// API: ดึง Reasons
 app.get('/reasons', async(req, res) => {
     try {
         const reasonsRef = db.ref('contactOptions/reasons');
         const snapshot = await reasonsRef.once('value');
-        if (snapshot.exists()) {
-            res.status(200).send(snapshot.val());
-        } else {
-            res.status(404).send({ error: 'No reasons found' });
-        }
+        const reasons = snapshot.val();
+        res.json(reasons || {});
     } catch (error) {
-        console.error('Error fetching reasons:', error);
-        res.status(500).send({ error: 'Failed to fetch reasons' });
+        res.status(500).send('Error fetching reasons');
     }
 });
 
-// Add Department Route
-app.post('/contactOptions/departments', async(req, res) => {
+// API: เพิ่ม Company
+app.post('/floors/:floor/companies', async(req, res) => {
+    const { floor } = req.params;
     const { name } = req.body;
-    if (!name) return res.status(400).json({ success: false, error: 'Department name is required' });
+
+    if (!name) {
+        return res.status(400).send('Company name is required');
+    }
 
     try {
-        const newDepartmentRef = db.ref(`contactOptions/departments/${name}`);
-        await set(newDepartmentRef, { contacts: [] });
-        res.json({ success: true, message: 'Department added successfully' });
+        const newCompanyRef = db.ref(`contactOptions/floors/${floor}/${name}`); // ใช้ชื่อบริษัทเป็น key
+        await newCompanyRef.set({}); // เพิ่มข้อมูลบริษัทด้วยข้อมูลว่าง
+        res.status(201).send('Company added');
     } catch (error) {
-        console.error('Error adding department:', error);
-        res.status(500).json({ success: false, error: 'Failed to add department' });
+        console.error('Error adding company:', error);
+        res.status(500).send('Error adding company');
     }
 });
 
-// Add Contact Route
-app.post('/contactOptions/departments/:department/contacts', async(req, res) => {
+
+
+
+// API: เพิ่ม Department
+app.post('/companies/:company/departments', async(req, res) => {
+    const { company } = req.params;
+    const { name } = req.body;
+    try {
+        const newDepartmentId = `department${Date.now()}`;
+        const departmentRef = db.ref(`contactOptions/companies/${company}/departments/${newDepartmentId}`);
+        await departmentRef.set({ name });
+        res.status(201).send('Department added');
+    } catch (error) {
+        res.status(500).send('Error adding department');
+    }
+});
+
+// API: เพิ่ม Contact
+app.post('/departments/:department/contacts', async(req, res) => {
     const { department } = req.params;
     const { name } = req.body;
-
-    if (!name) return res.status(400).json({ success: false, error: 'Contact name is required' });
-
     try {
-        const contactsRef = db.ref(`contactOptions/departments/${department}/contacts`);
-        const newContactRef = push(contactsRef);
-        await set(newContactRef, { name });
-        res.json({ success: true, message: 'Contact added successfully' });
+        const newContactId = `contact${Date.now()}`;
+        const contactRef = db.ref(`contactOptions/departments/${department}/contacts/${newContactId}`);
+        await contactRef.set({ name });
+        res.status(201).send('Contact added');
     } catch (error) {
-        console.error('Error adding contact:', error);
-        res.status(500).json({ success: false, error: 'Failed to add contact' });
+        res.status(500).send('Error adding contact');
     }
 });
 
-// Fetch Reasons Route
-
-
-app.put('/contactOptions/departments/:oldName', async(req, res) => {
-    const { oldName } = req.params;
-    const { newName } = req.body;
-
-    if (!newName) return res.status(400).json({ success: false, error: 'New department name is required' });
-
-    try {
-        const oldRef = ref(db, `contactOptions/departments/${oldName}`);
-        const newRef = ref(db, `contactOptions/departments/${newName}`);
-
-        // Get the existing department data
-        const snapshot = await get(oldRef);
-        if (snapshot.exists()) {
-            const data = snapshot.val();
-            // Create the new department with the old data and remove the old department
-            await set(newRef, data);
-            await remove(oldRef);
-            res.json({ success: true, message: 'Department updated successfully' });
-        } else {
-            res.status(404).json({ success: false, error: 'Department not found' });
-        }
-    } catch (error) {
-        console.error('Error updating department:', error);
-        res.status(500).json({ success: false, error: 'Failed to update department' });
-    }
-});
-
-app.delete('/departments/:name', async(req, res) => {
-    const { name } = req.params;
-
-    try {
-        const departmentRef = ref(db, `contactOptions/departments/${name}`);
-        await remove(departmentRef);
-        res.json({ success: true, message: 'Department deleted successfully' });
-    } catch (error) {
-        console.error('Error deleting department:', error);
-        res.status(500).json({ success: false, error: 'Failed to delete department' });
-    }
-});
-
-app.put('/departments/:department/contacts/:contactId', async(req, res) => {
-    const { department, contactId } = req.params;
-    const { newName } = req.body;
-
-    if (!newName) return res.status(400).json({ success: false, error: 'New contact name is required' });
-
-    try {
-        const contactRef = ref(db, `contactOptions/departments/${department}/contacts/${contactId}`);
-        await update(contactRef, { name: newName });
-        res.json({ success: true, message: 'Contact updated successfully' });
-    } catch (error) {
-        console.error('Error updating contact:', error);
-        res.status(500).json({ success: false, error: 'Failed to update contact' });
-    }
-});
-
-app.delete('/departments/:department/contacts/:contactId', async(req, res) => {
-    const { department, contactId } = req.params;
-
-    try {
-        const contactRef = ref(db, `contactOptions/departments/${department}/contacts/${contactId}`);
-        await remove(contactRef);
-        res.json({ success: true, message: 'Contact deleted successfully' });
-    } catch (error) {
-        console.error('Error deleting contact:', error);
-        res.status(500).json({ success: false, error: 'Failed to delete contact' });
-    }
-});
-
-app.delete('/reasons/:reasonId', async(req, res) => {
-    const { reasonId } = req.params;
-
-    try {
-        const reasonRef = ref(db, `contactOptions/reasons/${reasonId}`);
-        await remove(reasonRef);
-        res.json({ success: true, message: 'Reason deleted successfully' });
-    } catch (error) {
-        console.error('Error deleting reason:', error);
-        res.status(500).json({ success: false, error: 'Failed to delete reason' });
-    }
-});
-
-// Add Reason Route
+// API: เพิ่ม Reason
 app.post('/reasons', async(req, res) => {
     const { reason } = req.body;
-    if (!reason) return res.status(400).json({ success: false, error: 'Reason is required' });
-
     try {
-        const reasonsRef = db.ref('contactOptions/reasons');
-        const newReasonRef = push(reasonsRef);
-        await set(newReasonRef, { reason });
-        res.json({ success: true, message: 'Reason added successfully' });
+        const newReasonId = `reason${Date.now()}`;
+        const reasonRef = db.ref(`contactOptions/reasons/${newReasonId}`);
+        await reasonRef.set({ reason });
+        res.status(201).send('Reason added');
     } catch (error) {
-        console.error('Error adding reason:', error);
-        res.status(500).json({ success: false, error: 'Failed to add reason' });
+        res.status(500).send('Error adding reason');
     }
 });
 
+// API: ลบ Company
+app.delete('/companies/:companyId', async(req, res) => {
+    const { companyId } = req.params;
+    try {
+        const companyRef = db.ref(`contactOptions/companies/${companyId}`);
+        await companyRef.remove();
+        res.status(200).send('Company deleted');
+    } catch (error) {
+        res.status(500).send('Error deleting company');
+    }
+});
+
+// API: ลบ Department
+app.delete('/departments/:departmentId', async(req, res) => {
+    const { departmentId } = req.params;
+    try {
+        const departmentRef = db.ref(`contactOptions/departments/${departmentId}`);
+        await departmentRef.remove();
+        res.status(200).send('Department deleted');
+    } catch (error) {
+        res.status(500).send('Error deleting department');
+    }
+});
+
+// API: ลบ Contact
+app.delete('/contacts/:contactId', async(req, res) => {
+    const { contactId } = req.params;
+    try {
+        const contactRef = db.ref(`contactOptions/contacts/${contactId}`);
+        await contactRef.remove();
+        res.status(200).send('Contact deleted');
+    } catch (error) {
+        res.status(500).send('Error deleting contact');
+    }
+});
+
+// API: ลบ Reason
+app.delete('/reasons/:reasonId', async(req, res) => {
+    const { reasonId } = req.params;
+    try {
+        const reasonRef = db.ref(`contactOptions/reasons/${reasonId}`);
+        await reasonRef.remove();
+        res.status(200).send('Reason deleted');
+    } catch (error) {
+        res.status(500).send('Error deleting reason');
+    }
+}); { // visitor
+    // Endpoint สำหรับดึงข้อมูล  visitor 
+    // ดึงรายชื่อบริษัททั้งหมดจาก floors (ในโครงสร้างที่เรามี)
+    app.get('/visitor/companies', async(req, res) => {
+        try {
+            const companiesRef = db.ref('contactOptions/floors');
+            const snapshot = await companiesRef.once('value');
+            const floorsData = snapshot.val();
+            let companies = [];
+
+            for (const floor in floorsData) {
+                for (const company in floorsData[floor]) {
+                    companies.push({
+                        floor,
+                        company
+                    });
+                }
+            }
+
+            res.json(companies);
+        } catch (error) {
+            res.status(500).send('Error fetching companies');
+        }
+    });
+
+    // ดึงแผนกตามบริษัทที่เลือก
+    app.get('/visitor/companies/:company/departments', async(req, res) => {
+        const { company } = req.params;
+        try {
+            const departmentsRef = db.ref(`contactOptions/companies/${company}/departments`);
+            const snapshot = await departmentsRef.once('value');
+            const departments = snapshot.val();
+            res.json(departments || {});
+        } catch (error) {
+            res.status(500).send('Error fetching departments');
+        }
+    });
+
+    // ดึงรายชื่อบุคคลติดต่อจากแผนกที่เลือก
+    app.get('/visitor/departments/:department/contacts', async(req, res) => {
+        const { department } = req.params;
+        try {
+            const contactsRef = db.ref(`contactOptions/departments/${department}/contacts`);
+            const snapshot = await contactsRef.once('value');
+            const contacts = snapshot.val();
+            res.json(contacts || {});
+        } catch (error) {
+            res.status(500).send('Error fetching contacts');
+        }
+    });
+
+    // เส้นทางสำหรับบันทึกข้อมูล Visitor Register
+    app.post('/visitor/register', async(req, res) => {
+        const { name, company, department, contact, note } = req.body;
+        const date = new Date().toISOString();
+
+        try {
+            // หา floor ที่เกี่ยวข้องกับ company ที่เลือก
+            const companySnapshot = await db.ref(`contactOptions/floors`).orderByChild(company).once('value');
+            const floor = companySnapshot.exists() ? Object.keys(companySnapshot.val())[0] : null;
+
+            const newVisitorRef = push(db.ref('visitors'));
+            await newVisitorRef.set({
+                name,
+                company,
+                department,
+                contact,
+                note,
+                floor,
+                date,
+            });
+            res.status(201).send('Visitor registered');
+        } catch (error) {
+            res.status(500).send('Error registering visitor');
+        }
+    });
+
+
+}
 // Run Server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from './firebaseConfig'; // นำเข้า auth จากไฟล์ firebase.js
+import { signInWithEmailAndPassword } from 'firebase/auth';
 
 const API_URL = 'http://localhost:5000';
 
@@ -12,8 +13,6 @@ const Login = () => {
         const navigate = useNavigate();
 
         const handleLogin = async() => {
-            const auth = getAuth();
-
             try {
                 // ล็อกอินด้วยอีเมลและรหัสผ่าน
                 const userCredential = await signInWithEmailAndPassword(auth, username, password);
@@ -22,8 +21,9 @@ const Login = () => {
                 const idToken = await userCredential.user.getIdToken();
 
                 // ส่ง ID token ไปยังเซิร์ฟเวอร์เพื่อยืนยัน
-                const response = await axios.post(`${API_URL}/login`, { idToken }, );
+                const response = await axios.post(`${API_URL}/login`, { idToken });
                 console.log(response.data);
+
                 // หากล็อกอินสำเร็จ จะไปที่หน้า dashboard
                 navigate('/dashboard');
             } catch (err) {

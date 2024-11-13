@@ -12,6 +12,10 @@ const Dashboard = () => {
         navigate('/ContactOptionsManagement'); // Change URL to the page you want to create
     };
 
+    const goToVisitorRegister = () => {
+        navigate('/VisitorRegister'); // Change URL to the page you want to create
+    };
+
     return ( <
         div >
         <
@@ -27,6 +31,10 @@ const Dashboard = () => {
         li >
         <
         button onClick = { goToContactOptionsManagement } > ContactOptionsManagement < /button> <
+        /li> <
+        li >
+        <
+        button onClick = { goToVisitorRegister } > VisitorRegister < /button> <
         /li> <
         /ul> <
         /nav> <
